@@ -32,7 +32,7 @@ public class Shooter extends Plant {
         GameApp.gamePane.getChildren().add(projectile.getCircle()); // เพิ่มกระสุนลงในหน้าจอ
 
         // การหน่วงเวลาให้ยิงซ้ำได้ทุก 0.5 วินาที
-        PauseTransition pause = new PauseTransition(Duration.seconds(10)); // รอ 0.5 วินาที
+        PauseTransition pause = new PauseTransition(Duration.seconds(2.5)); // รอ 0.5 วินาที
         pause.setOnFinished(event -> canShoot = true); // เมื่อครบเวลาจะให้ยิงกระสุนใหม่
         pause.play();
 
