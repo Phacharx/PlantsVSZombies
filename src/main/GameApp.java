@@ -20,11 +20,7 @@ import javafx.util.Duration;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.effect.BlurType;
 
-import component.BasePlant;
-import component.Projectile;
-import component.Shooter;
-import component.MeleePlant;
-import component.Zombie;
+import component.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +29,7 @@ public class GameApp extends Application {
     public static Pane gamePane;
     public static List<Projectile> projectiles = new ArrayList<>();
     public static List<BasePlant> plants = new ArrayList<>();
-    public static List<Zombie> zombies = new ArrayList<>();
+    public static List<BaseZombie> zombies = new ArrayList<>();
     private GridPane grid;
     private String selectedPlantType = null;
     private ImageView selectedPlantCard = null;
@@ -42,6 +38,10 @@ public class GameApp extends Application {
     private int energy = 100; // พลังงานเริ่มต้น 100
     private Text energyText;
     private Timeline energyTimeline;
+    
+    private Timeline waveTimer;
+    private int currentWave = 0;
+
 
     @Override
     public void start(Stage primaryStage) {
@@ -148,9 +148,13 @@ public class GameApp extends Application {
         energyTimeline.setCycleCount(Timeline.INDEFINITE);
         
         startButton.setOnAction(e -> {
+            System.out.println("Start button clicked");
             gameTimer.play();
-            energyTimeline.play(); // เริ่มเพิ่มพลังงานเมื่อกด Start
+            energyTimeline.play();
+            startWaves();
+            moveZombies();
         });
+
         
         Scene scene = new Scene(gamePane, 910, 600);
         primaryStage.setTitle("Plant vs Zombie");
@@ -162,26 +166,119 @@ public class GameApp extends Application {
         if (selectedPlantType != null) {
             int cost = selectedPlantType.equals("Shooter") ? 40 : 25;
             if (energy >= cost) {
+                // ✅ ตรวจสอบก่อนเพิ่มพืช
+                for (BasePlant plant : GameApp.plants) {
+                    if (plant.getX() == (40 + col * 85) && plant.getY() == (140 + row * 85)) {
+                        System.out.println("A plant already exists here!");
+                        return;
+                    }
+                }
+
                 energy -= cost;
                 energyText.setText("Energy: " + energy);
-                
-                String plantImagePath = selectedPlantType.equals("Shooter") ? "/Image/Big_Mina.png" : "/Image/Big_Finish_PunchS2.png";
-                ImageView plantImage = new ImageView(new Image(getClass().getResource(plantImagePath).toExternalForm()));
-                plantImage.setFitWidth(65);
-                plantImage.setFitHeight(65);
-                plantImage.setLayoutX(40 + col * 85);
-                plantImage.setLayoutY(140 + row * 85);
-                
-                gamePane.getChildren().add(plantImage);
-                selectedPlantCard.setOpacity(1.0); // คืนค่าเดิมเมื่อวางพืช
+
+                BasePlant newPlant;
+                if (selectedPlantType.equals("Shooter")) {
+                    newPlant = new Shooter(40 + col * 85, 140 + row * 85);
+                } else {
+                    newPlant = new MeleePlant(40 + col * 85, 140 + row * 85);
+                }
+
+                // ✅ เพิ่มพืชเข้า List ครั้งเดียว
+                GameApp.plants.add(newPlant);
+
+                // ✅ รีเซ็ตการเลือกพืช
+                if (selectedPlantCard != null) {
+                    selectedPlantCard.setOpacity(1.0);
+                    selectedPlantCard = null;
+                }
                 selectedPlantType = null;
             } else {
-            	selectedPlantCard.setOpacity(1.0); // คืนค่าเดิมเมื่อวางพืช
-                selectedPlantType = null;
                 System.out.println("Not enough energy to place " + selectedPlantType);
             }
         }
     }
+
+
+
+
+
+
+    
+    private void startWaves() {
+        System.out.println("startWaves() called");
+
+        // Wave 1 เริ่มทันที
+        currentWave = 1;
+        System.out.println("Starting wave " + currentWave);
+        spawnWave(currentWave);
+
+        // ตั้ง waveTimer สำหรับเวฟที่ 2 เป็นต้นไป (เว้น 45 วินาที)
+        waveTimer = new Timeline(new KeyFrame(Duration.seconds(45), e -> {
+            if (currentWave < 4) {
+                currentWave++;
+                System.out.println("Starting wave " + currentWave);
+                spawnWave(currentWave);
+            } else {
+                waveTimer.stop();
+                System.out.println("All waves completed!");
+            }
+        }));
+        waveTimer.setCycleCount(3); // เหลือ 3 เวฟหลังจาก Wave 1 ออกไปแล้ว
+        waveTimer.play();
+    }
+
+
+
+
+    private void spawnWave(int waveNumber) {
+        System.out.println("spawnWave() called for wave " + waveNumber);
+
+        int numZombies = 2 + waveNumber * 2; // จำนวนซอมบี้เพิ่มขึ้นตามเวฟ
+        int lane;
+
+        for (int i = 0; i < numZombies; i++) {
+            lane = (int) (Math.random() * 5); // สุ่มแถว (0-4)
+            BaseZombie zombie;
+
+            if (waveNumber == 1) {
+                zombie = new Zombie(900, 140 + lane * 85);
+            } else if (waveNumber == 2) {
+                zombie = (i % 2 == 0) ? new FastZombie(900, 140 + lane * 85) : new Zombie(900, 140 + lane * 85);
+            } else if (waveNumber == 3) {
+                zombie = (i % 3 == 0) ? new HeavyZombie(900, 140 + lane * 85) : new Zombie(900, 140 + lane * 85);
+            } else {
+                zombie = (i % 4 == 0) ? new HeavyZombie(900, 140 + lane * 85) : new FastZombie(900, 140 + lane * 85);
+            }
+
+            zombies.add(zombie);
+
+            // **ตรวจสอบก่อนว่า gamePane มีซอมบี้ตัวนี้หรือยัง**
+            if (!gamePane.getChildren().contains(zombie.getImageView())) {
+                gamePane.getChildren().add(zombie.getImageView()); // เพิ่มซอมบี้เข้า gamePane
+                System.out.println("Spawned zombie at lane " + lane + " position: " + zombie.getImageView().getX());
+            } else {
+                System.out.println("Zombie already exists in gamePane, skipping duplicate addition.");
+            }
+        }
+    }
+
+
+    
+    private void moveZombies() {
+        System.out.println("moveZombies() started"); // Debugging
+
+        Timeline zombieMoveTimeline = new Timeline(new KeyFrame(Duration.millis(100), e -> {
+            for (BaseZombie zombie : zombies) {
+                zombie.move(); // อัปเดตตำแหน่ง
+                System.out.println("Zombie moved to X: " + zombie.getImageView().getX());
+            }
+        }));
+        zombieMoveTimeline.setCycleCount(Timeline.INDEFINITE);
+        zombieMoveTimeline.play();
+    }
+
+
 
     public static void main(String[]args) {
         launch(args);

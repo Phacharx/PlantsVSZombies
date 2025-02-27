@@ -3,26 +3,19 @@ package component;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.scene.image.ImageView;
-import javafx.scene.paint.Color;
-import javafx.util.Duration;
 import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.util.Duration;
 import main.GameApp;
 
 public abstract class BaseZombie {
     protected int health;
-    protected int x, y;
-    protected boolean isEating = false;
-    protected boolean isAttacking = false;
-    protected BasePlant targetPlant;
-    protected Timeline attackTimeline;
     protected double speed;
     protected ImageView zombieImage;
     protected Timeline moveTimeline;
-    
+    protected boolean isAttacking = false; // ซอมบี้กำลังโจมตีอยู่หรือไม่
+    private Timeline attackTimer = null; // ตัวจับเวลาโจมตีพืช
+
     public BaseZombie(String imagePath, int x, int y, int health, double speed) {
-    	this.x = x;
-        this.y = y;
         this.health = health;
         this.speed = speed;
         this.zombieImage = new ImageView(new Image(getClass().getResource(imagePath).toExternalForm()));
@@ -30,164 +23,137 @@ public abstract class BaseZombie {
         this.zombieImage.setFitHeight(80);
         this.zombieImage.setX(x);
         this.zombieImage.setY(y);
-        
+
         GameApp.gamePane.getChildren().add(zombieImage);
-        
-        moveTimeline = new Timeline(new KeyFrame(Duration.millis(500), e -> move()));
+
+        moveTimeline = new Timeline(new KeyFrame(Duration.millis(100), e -> move()));
         moveTimeline.setCycleCount(Timeline.INDEFINITE);
         moveTimeline.play();
     }
-    
+
     public void move() {
-    	for (BasePlant plant : GameApp.plants) {
-            if (Math.abs(plant.getX() - x) < 50 && Math.abs(plant.getY() - y) < 50) {
-                attack(plant);
-                return; // ถ้าชนต้นไม้ให้หยุดเดิน
+    	System.out.println("Total Plants in game: " + GameApp.plants.size());
+        if (!isAttacking) { // ซอมบี้จะเดินต่อเมื่อไม่ได้โจมตี
+            System.out.println("Zombie moving: X=" + zombieImage.getX() + ", Y=" + zombieImage.getY());
+
+            if (checkCollisionWithPlants()) {
+                isAttacking = true;
+                System.out.println("Zombie stopped at X=" + zombieImage.getX() + " to attack.");
+                attackPlant();
+            } else {
+                zombieImage.setX(zombieImage.getX() - 2);
+                System.out.println("Zombie moved to X: " + zombieImage.getX());
+            }
+
+        } else {
+            System.out.println("Zombie is attacking, not moving.");
+        }
+    }
+
+    // ตรวจจับว่ามีพืชขวางอยู่ข้างหน้าหรือไม่
+    private boolean checkCollisionWithPlants() {
+        System.out.println("Checking collision... Total Plants: " + GameApp.plants.size());
+
+        for (BasePlant plant : GameApp.plants) {
+            double dx = Math.abs(zombieImage.getX() - plant.getImageView().getX());
+            double dy = Math.abs(zombieImage.getY() - plant.getImageView().getY());
+
+            System.out.println("Zombie (" + zombieImage.getX() + ", " + zombieImage.getY() + 
+                               ") vs Plant (" + plant.getImageView().getX() + ", " + plant.getImageView().getY() + 
+                               ") → dx=" + dx + ", dy=" + dy);
+
+            // ปรับค่า dx และ dy ให้อยู่ในระยะที่ซอมบี้ควรจะหยุด
+            if (dx < 50 && dy < 50) {  // 🔥 เพิ่มขอบเขตการตรวจจับ
+                System.out.println("Collision detected! Zombie will attack.");
+                return true;
             }
         }
-        x -= speed;
-        zombieImage.setX(x);
+        return false;
     }
-    
-    public void attack(BasePlant plant) {
-        plant.takeDamage(10);
-        System.out.println("Zombie attacking!");
+
+
+
+    private void attackPlant() {
+        System.out.println("Zombie is attacking a plant!");
+
+        if (attackTimer == null) { // ป้องกันการสร้าง Timer ซ้ำซ้อน
+            attackTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+                BasePlant targetPlant = null;
+
+                for (BasePlant plant : GameApp.plants) {
+                    double dx = Math.abs(zombieImage.getX() - plant.getImageView().getX());
+                    double dy = Math.abs(zombieImage.getY() - plant.getImageView().getY());
+
+                    if (dx < 50 && dy < 50) { // 🔥 ตรวจสอบพืชอีกครั้งก่อนโจมตี
+                        targetPlant = plant;
+                        break;
+                    }
+                }
+
+                if (targetPlant != null) {
+                    targetPlant.takeDamage(10);
+                    System.out.println("Plant HP: " + targetPlant.getHealth());
+
+                    if (targetPlant.getHealth() <= 0) {
+                        System.out.println("Plant destroyed!");
+                        GameApp.gamePane.getChildren().remove(targetPlant.getImageView());
+                        GameApp.plants.remove(targetPlant);
+                        
+                        // ✅ ปล่อยให้ซอมบี้เดินต่อหลังจากพืชตาย
+                        isAttacking = false;
+                        attackTimer.stop();
+                        attackTimer = null;
+                    }
+                } else {
+                    System.out.println("No plant found. Zombie will resume walking.");
+                    isAttacking = false; // ไม่มีพืชให้โจมตี เดินต่อ
+                    attackTimer.stop();
+                    attackTimer = null;
+                }
+            }));
+            attackTimer.setCycleCount(Timeline.INDEFINITE);
+            attackTimer.play();
+        }
     }
-    
-    
+
+
+
+
     public void takeDamage(int damage) {
         health -= damage;
+        System.out.println("Zombie took damage: " + damage + " | HP left: " + health);
+        
         if (health <= 0) {
+            System.out.println("Zombie died at X=" + zombieImage.getX() + ", Y=" + zombieImage.getY());
             die();
         }
     }
-    
+
+
     public void die() {
         GameApp.gamePane.getChildren().remove(zombieImage);
         GameApp.zombies.remove(this);
+        if (attackTimer != null) {
+            attackTimer.stop();
+            attackTimer = null;
+        }
+        System.out.println("Zombie removed from game.");
     }
-    
+
+
     public ImageView getImageView() {
         return zombieImage;
     }
-    
-    protected void stopAndAttack() {
-        if (health > 0 && !isAttacking) {
-            isAttacking = true;
-            attackTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> attack()));
-            attackTimeline.setCycleCount(Timeline.INDEFINITE);
-            attackTimeline.play();
-        }
-    }
-    
-    protected void attack() {
-        if (targetPlant != null && health > 0 && targetPlant.getHealth() > 0 && isAttacking) {
-            targetPlant.takeDamage(10);
-            System.out.println("Zombie is attacking plant! Plant health: " + targetPlant.getHealth());
-        } else {
-            stopAttack();
-        }
-    }
-    
-    protected void stopAttack() {
-        isAttacking = false;
-    }
-    
-    protected void findNewTargetPlant() {
-        for (BasePlant plant : GameApp.plants) {
-            if (plant.getHealth() > 0) {
-                targetPlant = plant;
-                break;
-            }
-        }
-    }
-    
-    public void update() {
-        this.x -= speed;
-        zombieImage.setLayoutX(x);
 
-        if (x < 50) { // ถ้าซอมบี้เดินเข้าไปถึงแมพจริงๆ
-            System.out.println("Zombie entered the map!");
-        }
-
-        if (x < -50) { // ถ้าซอมบี้เดินพ้นขอบจอ
-            System.out.println("Zombie removed!");
-            GameApp.gamePane.getChildren().remove(this.zombieImage);
-            GameApp.zombies.remove(this);
-        }
+    public boolean isDead() {
+        return this.health <= 0;
+    }
+    public int getX() {
+        return (int) zombieImage.getX(); // คืนค่า X ตำแหน่งของซอมบี้
     }
 
-    
-	public int getHealth() {
-		return health;
-	}
+    public int getY() {
+        return (int) zombieImage.getY(); // คืนค่า Y ตำแหน่งของซอมบี้
+    }
 
-	public void setHealth(int health) {
-		this.health = health;
-	}
-
-	public int getX() {
-		return x;
-	}
-
-	public void setX(int x) {
-		this.x = x;
-	}
-
-	public int getY() {
-		return y;
-	}
-
-	public void setY(int y) {
-		this.y = y;
-	}
-
-	public boolean isEating() {
-		return isEating;
-	}
-
-	public void setEating(boolean isEating) {
-		this.isEating = isEating;
-	}
-
-	public boolean isAttacking() {
-		return isAttacking;
-	}
-
-	public void setAttacking(boolean isAttacking) {
-		this.isAttacking = isAttacking;
-	}
-
-	public BasePlant getTargetPlant() {
-		return targetPlant;
-	}
-
-	public void setTargetPlant(BasePlant targetPlant) {
-		this.targetPlant = targetPlant;
-	}
-
-	public Timeline getAttackTimeline() {
-		return attackTimeline;
-	}
-
-	public void setAttackTimeline(Timeline attackTimeline) {
-		this.attackTimeline = attackTimeline;
-	}
-
-	public Timeline getMoveTimeline() {
-		return moveTimeline;
-	}
-
-	public void setMoveTimeline(Timeline moveTimeline) {
-		this.moveTimeline = moveTimeline;
-	}
-
-	public void setSpeed(double speed) {
-		this.speed = speed;
-	}
-	
-	public boolean isDead() {
-		return this.health <= 0;
-	}
-    
 }

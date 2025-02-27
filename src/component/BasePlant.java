@@ -18,7 +18,10 @@ public abstract class BasePlant {
         this.imageView.setFitHeight(70);
         this.imageView.setX(x);
         this.imageView.setY(y);
-        GameApp.gamePane.getChildren().add(this.imageView);
+//        if (!GameApp.gamePane.getChildren().contains(this.imageView)) {
+//            GameApp.gamePane.getChildren().add(this.imageView);
+//        }
+//        GameApp.plants.add(this);
     }
 
     public void performAction() {
@@ -33,8 +36,16 @@ public abstract class BasePlant {
     }
 
     public void die() {
+        System.out.println("Plant died at X=" + this.x + ", Y=" + this.y);
+        
         GameApp.gamePane.getChildren().remove(this.imageView);
-        GameApp.plants.remove(this);
+        boolean removed = GameApp.plants.remove(this);
+        
+        if (removed) {
+            System.out.println("Plant successfully removed from GameApp.plants.");
+        } else {
+            System.out.println("⚠ Error: Plant was not found in GameApp.plants.");
+        }
     }
 
     public ImageView getImageView() {
@@ -66,4 +77,7 @@ public abstract class BasePlant {
         this.y = y;
         this.imageView.setY(y);
     }
+    public boolean isDead() {
+		return this.health <= 0;
+	}
 }
