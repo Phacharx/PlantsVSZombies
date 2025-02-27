@@ -1,5 +1,7 @@
 package component;
 
+import java.util.Iterator;
+import javafx.application.Platform;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import main.GameApp;
@@ -30,23 +32,33 @@ public abstract class BasePlant {
 
     public void takeDamage(int damage) {
         health -= damage;
+        System.out.println("Plant took damage: " + damage + " | HP left: " + health);
+
         if (health <= 0) {
+            System.out.println("Plant destroyed!");
             die();
         }
     }
 
+
     public void die() {
-        System.out.println("Plant died at X=" + this.x + ", Y=" + this.y);
-        
-        GameApp.gamePane.getChildren().remove(this.imageView);
-        boolean removed = GameApp.plants.remove(this);
-        
-        if (removed) {
-            System.out.println("Plant successfully removed from GameApp.plants.");
-        } else {
-            System.out.println("⚠ Error: Plant was not found in GameApp.plants.");
-        }
+        System.out.println("🔥 Plant died at X=" + this.x + ", Y=" + this.y);
+
+        // ✅ ใช้ Platform.runLater() เพื่อลบ UI อย่างปลอดภัย
+        Platform.runLater(() -> {
+            boolean removedFromGamePane = GameApp.gamePane.getChildren().remove(this.imageView);
+            System.out.println("📌 Removed from gamePane: " + removedFromGamePane);
+        });
+
+        // ✅ ลบจาก List
+        boolean removedFromPlants = GameApp.plants.remove(this);
+        System.out.println("✅ Plant removed from GameApp.plants: " + removedFromPlants);
+
+        GameApp.printPlantList(); // ตรวจสอบรายการพืชที่เหลือ
     }
+
+
+
 
     public ImageView getImageView() {
         return imageView;

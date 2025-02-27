@@ -10,7 +10,7 @@ import main.GameApp;
 public class Projectile {
 	private int x, y;
     private ImageView projectileImage;
-    private int damage = 25;
+    private int damage = 10;
     private Timeline moveTimeline;
     
     public Projectile(int x, int y) {
@@ -22,7 +22,10 @@ public class Projectile {
         this.projectileImage.setX(x);
         this.projectileImage.setY(y);
         
-        GameApp.gamePane.getChildren().add(projectileImage);
+     // ✅ ตรวจสอบก่อนเพิ่มเข้า gamePane
+        if (!GameApp.gamePane.getChildren().contains(this.projectileImage)) {
+            GameApp.gamePane.getChildren().add(this.projectileImage);
+        }
         
         moveTimeline = new Timeline(new KeyFrame(Duration.millis(100), e -> move()));
         moveTimeline.setCycleCount(Timeline.INDEFINITE);

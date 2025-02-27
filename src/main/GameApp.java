@@ -163,40 +163,31 @@ public class GameApp extends Application {
     }
 
     private void placePlant(int row, int col) {
-        if (selectedPlantType != null) {
-            int cost = selectedPlantType.equals("Shooter") ? 40 : 25;
-            if (energy >= cost) {
-                // ✅ ตรวจสอบก่อนเพิ่มพืช
-                for (BasePlant plant : GameApp.plants) {
-                    if (plant.getX() == (40 + col * 85) && plant.getY() == (140 + row * 85)) {
-                        System.out.println("A plant already exists here!");
-                        return;
-                    }
-                }
+    	if (selectedPlantType != null) {
+    	    int cost = selectedPlantType.equals("Shooter") ? 40 : 25;
+    	    if (energy >= cost) {
+    	        for (BasePlant plant : GameApp.plants) {
+    	            if (plant.getX() == (40 + col * 85) && plant.getY() == (140 + row * 85)) {
+    	                System.out.println("⚠ A plant already exists here!");
+    	                return;
+    	            }
+    	        }
 
-                energy -= cost;
-                energyText.setText("Energy: " + energy);
+    	        energy -= cost;
+    	        energyText.setText("Energy: " + energy);
 
-                BasePlant newPlant;
-                if (selectedPlantType.equals("Shooter")) {
-                    newPlant = new Shooter(40 + col * 85, 140 + row * 85);
-                } else {
-                    newPlant = new MeleePlant(40 + col * 85, 140 + row * 85);
-                }
+    	        BasePlant newPlant = selectedPlantType.equals("Shooter") ?
+    	                new Shooter(40 + col * 85, 140 + row * 85) :
+    	                new MeleePlant(40 + col * 85, 140 + row * 85);
 
-                // ✅ เพิ่มพืชเข้า List ครั้งเดียว
-                GameApp.plants.add(newPlant);
+    	        GameApp.plants.add(newPlant);
+    	        System.out.println("✅ Plant placed at X=" + newPlant.getX() + ", Y=" + newPlant.getY());
 
-                // ✅ รีเซ็ตการเลือกพืช
-                if (selectedPlantCard != null) {
-                    selectedPlantCard.setOpacity(1.0);
-                    selectedPlantCard = null;
-                }
-                selectedPlantType = null;
-            } else {
-                System.out.println("Not enough energy to place " + selectedPlantType);
-            }
-        }
+    	        printPlantList(); // เช็คว่าพืชถูกเพิ่มลงไปจริง ๆ หรือไม่
+    	    } else {
+    	        System.out.println("⚠ Not enough energy to place " + selectedPlantType);
+    	    }
+    	}
     }
 
 
@@ -263,7 +254,13 @@ public class GameApp extends Application {
         }
     }
 
-
+    // ตรวจสอบว่า plants อัปเดตถูกต้องหรือไม่
+    public static void printPlantList() {
+        System.out.println("🔍 Current Plants in Game:");
+        for (BasePlant plant : plants) {
+            System.out.println("🌿 Plant at X=" + plant.getX() + ", Y=" + plant.getY());
+        }
+    }
     
     private void moveZombies() {
         System.out.println("moveZombies() started"); // Debugging

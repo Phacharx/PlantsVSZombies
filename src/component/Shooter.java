@@ -9,22 +9,21 @@ import main.GameApp;
 
 public class Shooter extends BasePlant {
     private Timeline shootTimer;
-    private ImageView imageView;
 
     public Shooter(int x, int y) {
-    	super(x, y, 100, "/Image/Big_Mina.png"); // ส่ง path ของรูป
-        this.imageView = new ImageView(new Image(getClass().getResource("/Image/Big_Mina.png").toExternalForm()));
-        this.imageView.setFitWidth(65);
-        this.imageView.setFitHeight(65);
-        this.imageView.setLayoutX(x);
-        this.imageView.setLayoutY(y);
+        super(x, y, 100, "/Image/Big_Mina.png");
+        
         GameApp.gamePane.getChildren().add(this.imageView);
-
         startShooting();
     }
 
     private void startShooting() {
         shootTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            if (isDead()) { // หยุดยิงถ้าพืชตาย
+                stopShooting();
+                return;
+            }
+
             for (BaseZombie zombie : GameApp.zombies) {
                 if (zombie.getY() == this.y && zombie.getX() < 900) {
                     shoot();
@@ -37,13 +36,34 @@ public class Shooter extends BasePlant {
     }
 
     private void shoot() {
+        if (isDead()) return; // ❌ ไม่ยิงถ้าพืชตายแล้ว
+
         Projectile projectile = new Projectile(this.x + 60, this.y + 20);
         GameApp.projectiles.add(projectile);
-        GameApp.gamePane.getChildren().add(projectile.getImageView());
+
+        // ✅ ตรวจสอบก่อนเพิ่มเข้า gamePane
+        if (!GameApp.gamePane.getChildren().contains(projectile.getImageView())) {
+            GameApp.gamePane.getChildren().add(projectile.getImageView());
+        }
+    }
+
+
+    public void stopShooting() {
+        if (shootTimer != null) {
+            shootTimer.stop();
+            shootTimer = null;
+            System.out.println("🛑 Shooter stopped shooting.");
+        }
     }
 
     @Override
     public void performAction() {
         // Shooting is handled by the timeline
+    }
+
+    @Override
+    public void die() {
+        stopShooting(); // ✅ หยุดยิงก่อนตาย
+        super.die();    // ✅ เรียก die() ใน BasePlant
     }
 }

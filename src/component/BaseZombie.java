@@ -91,7 +91,7 @@ public abstract class BaseZombie {
                 }
 
                 if (targetPlant != null) {
-                    targetPlant.takeDamage(10);
+                    targetPlant.takeDamage(15);
                     System.out.println("Plant HP: " + targetPlant.getHealth());
 
                     if (targetPlant.getHealth() <= 0) {
