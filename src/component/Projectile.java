@@ -1,39 +1,58 @@
 package component;
 
-import javafx.scene.shape.Circle;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.util.Duration;
+import main.GameApp;
 
 public class Projectile {
-    private int x, y;
-    private Circle circle;
-    private int damage = 25; // กระสุนทำลาย 25 หน่วย
-
+	private int x, y;
+    private ImageView projectileImage;
+    private int damage = 25;
+    private Timeline moveTimeline;
+    
     public Projectile(int x, int y) {
         this.x = x;
         this.y = y;
-        this.circle = new Circle(x, y, 5); // ขนาดของวงกลม 5 สำหรับเม็ดกระสุน
-        this.circle.setFill(javafx.scene.paint.Color.YELLOW); // สีของกระสุน
+        this.projectileImage = new ImageView(new Image(getClass().getResource("/Image/Big_Energy_Ball.png").toExternalForm()));
+        this.projectileImage.setFitWidth(20);
+        this.projectileImage.setFitHeight(20);
+        this.projectileImage.setX(x);
+        this.projectileImage.setY(y);
+        
+        GameApp.gamePane.getChildren().add(projectileImage);
+        
+        moveTimeline = new Timeline(new KeyFrame(Duration.millis(100), e -> move()));
+        moveTimeline.setCycleCount(Timeline.INDEFINITE);
+        moveTimeline.play();
     }
-
+    
     public void move() {
-        x += 5; // กระสุนเคลื่อนที่ไปทางขวา
-        circle.setCenterX(x); // อัพเดตตำแหน่ง X ของวงกลม
+        x += 10;
+        projectileImage.setX(x);
+
+        for (BaseZombie zombie : GameApp.zombies) {
+            if (Math.abs(zombie.getX() - x) < 30 && Math.abs(zombie.getY() - y) < 30) {
+                zombie.takeDamage(damage);
+                GameApp.gamePane.getChildren().remove(projectileImage);
+                moveTimeline.stop();
+                GameApp.projectiles.remove(this);
+                break;
+            }
+        }
     }
 
-    public Circle getCircle() {
-        return circle;
+    public void remove() {
+        GameApp.gamePane.getChildren().remove(this.projectileImage);
     }
 
     public int getDamage() {
-        return damage; // คืนค่าความเสียหายของกระสุน
+        return damage;
     }
 
-	public int getX() {
-		return x;
-	}
-
-	public void setX(int x) {
-		this.x = x;
-	}
-    
-    
+    public ImageView getImageView() {
+        return projectileImage;
+    }
 }

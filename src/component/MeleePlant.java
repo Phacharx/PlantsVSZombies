@@ -1,50 +1,43 @@
 package component;
 
-import javafx.animation.PauseTransition;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.util.Duration;
 import main.GameApp;
 
-public class MeleePlant extends Plant {
-    private boolean canAttack = true; // ควบคุมการโจมตีให้เกิดคูลดาวน์
+public class MeleePlant extends BasePlant {
+    private Timeline attackTimer;
+    private ImageView imageView;
 
     public MeleePlant(int x, int y) {
-        super(150, x, y); // กำหนดค่าเลือดเริ่มต้นให้พืชเป็น 150 (ปรับได้ตามต้องการ)
+    	super(x, y, 100, "/Image/Big_Finish_PunchS1.png");
+        this.imageView = new ImageView(new Image(getClass().getResource("/Image/Big_Finish_PunchS1.png").toExternalForm()));
+        this.imageView.setFitWidth(65);
+        this.imageView.setFitHeight(65);
+        this.imageView.setLayoutX(x);
+        this.imageView.setLayoutY(y);
+        GameApp.gamePane.getChildren().add(this.imageView);
+
+        startAttacking();
+    }
+
+    private void startAttacking() {
+        attackTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            for (BaseZombie zombie : GameApp.zombies) {
+                if (Math.abs(zombie.getX() - this.x) < 50 && zombie.getY() == this.y) {
+                    zombie.takeDamage(50);
+                    break;
+                }
+            }
+        }));
+        attackTimer.setCycleCount(Timeline.INDEFINITE);
+        attackTimer.play();
     }
 
     @Override
     public void performAction() {
-        if (canAttack && !isDead()) {
-            // ตรวจสอบซอมบี้ในเกมว่ามีตัวไหนอยู่ในระยะโจมตี (ระยะ 50 หน่วย)
-            for (Zombie zombie : GameApp.zombies) {
-                if (zombie.getHealth() > 0 && isInRange(zombie)) {
-                    attack(zombie);
-                    break; // โจมตีแค่ตัวแรกที่เจอในระยะ
-                }
-            }
-        }
-    }
-
-    // ฟังก์ชันตรวจสอบว่าซอมบี้อยู่ในระยะโจมตีหรือไม่
-    private boolean isInRange(Zombie zombie) {
-        // เปรียบเทียบระยะห่างในแกน X ระหว่างพืชกับซอมบี้ (สามารถปรับให้ละเอียดขึ้นได้)
-        return Math.abs(this.x - zombie.getX()) < 50;
-    }
-
-    // ฟังก์ชันโจมตีซอมบี้ที่อยู่ในระยะ
-    private void attack(Zombie zombie) {
-        System.out.println("MeleePlant กำลังโจมตีซอมบี้!");
-        zombie.takeDamage(20); // ลดเลือดซอมบี้ลง 20 หน่วย (ปรับค่าความเสียหายได้ตามต้องการ)
-        
-        // ตั้งคูลดาวน์เพื่อป้องกันการโจมตีต่อเนื่อง
-        canAttack = false;
-        PauseTransition pause = new PauseTransition(Duration.seconds(1)); // ตั้งเวลาคูลดาวน์ 1 วินาที
-        pause.setOnFinished(event -> canAttack = true);
-        pause.play();
-    }
-
-    @Override
-    public void die() {
-        super.die();
-        canAttack = false; // ยืนยันว่าหยุดการโจมตีเมื่อพืชตาย
+        // Attack is handled by the timeline
     }
 }
