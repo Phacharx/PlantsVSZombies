@@ -1,5 +1,6 @@
 package main;
 
+import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
@@ -28,23 +29,30 @@ import component.*;
 
 import java.lang.classfile.instruction.SwitchCase;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
+
 
 public class GameApp extends Application {
     public static Pane gamePane;
     public static List<Projectile> projectiles = new ArrayList<>();
     public static List<BasePlant> plants = new ArrayList<>();
     public static List<BaseZombie> zombies = new ArrayList<>();
+
     private GridPane grid;
     private String selectedPlantType = null;
     private ImageView selectedPlantCard = null;
     
     private static int energy = 100; // พลังงานเริ่มต้น 100
     private static Text energyText;
-    private Timeline energyTimeline;
+    private static Timeline energyTimeline;
     
-    private Timeline waveTimer;
+    private static Timeline waveTimer;
     private int currentWave = 0;
+    
+    private static Timeline moveZombiesTimeline;
+    private static boolean isGameOver = false;
 
 
     @Override
@@ -72,8 +80,8 @@ public class GameApp extends Application {
         plantSelectionBar.setLayoutX(50);
         plantSelectionBar.setLayoutY(20);
         
-        String[] plantNames = {"Shooter", "Melee"};
-        String[] plantImages = {"/Image/Big_Mina.png", "/Image/Big_Finish_PunchS2.png"};
+        String[] plantNames = {"Shooter", "Melee", "Defensive"};
+        String[] plantImages = {"/Image/CardShooter.png", "/Image/CardMelee.png", "/Image/CardDefensive.png"};
         for (int i = 0; i < plantNames.length; i++) {
             ImageView plantCard = new ImageView(new Image(getClass().getResource(plantImages[i]).toExternalForm()));
             plantCard.setFitWidth(80);
@@ -153,32 +161,57 @@ public class GameApp extends Application {
     }
 
     private void placePlant(int row, int col) {
-    	if (selectedPlantType != null) {
-    	    int cost = selectedPlantType.equals("Shooter") ? 40 : 25;
-    	    if (energy >= cost) {
-    	        for (BasePlant plant : GameApp.plants) {
-    	            if (plant.getX() == (40 + col * 85) && plant.getY() == (140 + row * 85)) {
-    	                System.out.println("⚠ A plant already exists here!");
-    	                return;
-    	            }
-    	        }
+        if (selectedPlantType != null) {
+            int cost;
+            BasePlant newPlant;
 
-    	        energy -= cost;
-    	        energyText.setText("Energy: " + energy);
+            int xPos = 40 + col * 85;
+            int yPos = 140 + row * 85;
 
-    	        BasePlant newPlant = selectedPlantType.equals("Shooter") ?
-    	                new Shooter(40 + col * 85, 140 + row * 85) :
-    	                new MeleePlant(40 + col * 85, 140 + row * 85);
+            // ตั้งค่าราคาตามประเภทของพืช
+            switch (selectedPlantType) {
+                case "Shooter":
+                    cost = 40;
+                    newPlant = new Shooter(xPos, yPos);
+                    break;
+                case "Melee":
+                    cost = 25;
+                    newPlant = new MeleePlant(xPos, yPos);
+                    break;
+                case "Defensive":
+                    cost = 30;
+                    newPlant = new DefensivePlant(xPos, yPos);
+                    break;
+                default:
+                    System.out.println("⚠ Invalid plant type selected!");
+                    return;
+            }
 
-    	        GameApp.plants.add(newPlant);
-    	        System.out.println("✅ Plant placed at X=" + newPlant.getX() + ", Y=" + newPlant.getY());
+            // ตรวจสอบพลังงานก่อนวางพืช
+            if (energy < cost) {
+                System.out.println("⚠ Not enough energy to place " + selectedPlantType);
+                return;
+            }
 
-    	        printPlantList(); // เช็คว่าพืชถูกเพิ่มลงไปจริง ๆ หรือไม่
-    	    } else {
-    	        System.out.println("⚠ Not enough energy to place " + selectedPlantType);
-    	    }
-    	}
+            // ตรวจสอบว่ามีพืชอยู่ในตำแหน่งนี้หรือไม่
+            for (BasePlant plant : GameApp.plants) {
+                if (plant.getX() == xPos && plant.getY() == yPos) {
+                    System.out.println("⚠ A plant already exists here!");
+                    return;
+                }
+            }
+
+            // หักพลังงานและวางพืช
+            energy -= cost;
+            energyText.setText("Energy: " + energy);
+
+            GameApp.plants.add(newPlant);
+            System.out.println("✅ " + selectedPlantType + " placed at X=" + newPlant.getX() + ", Y=" + newPlant.getY());
+
+            printPlantList(); // เช็คว่าพืชถูกเพิ่มลงไปจริง ๆ หรือไม่
+        }
     }
+
 
     private void startWaves() {
         System.out.println("startWaves() called");
@@ -193,9 +226,9 @@ public class GameApp extends Application {
 
     private void startNextWave(int[] zombiesPerWave) {
         if (currentWave < 4) {
-            System.out.println("⏳ Waiting 45 seconds before starting wave " + (currentWave + 1));
+            System.out.println("⏳ Waiting 15 seconds before starting wave " + (currentWave + 1));
 
-            waveTimer = new Timeline(new KeyFrame(Duration.seconds(45), e -> {
+            waveTimer = new Timeline(new KeyFrame(Duration.seconds(15), e -> {
                 currentWave++;
                 System.out.println("🚀 Starting wave " + currentWave);
                 spawnWave(currentWave, zombiesPerWave[currentWave - 1], () -> {
@@ -216,42 +249,33 @@ public class GameApp extends Application {
         AtomicInteger remainingZombies = new AtomicInteger(totalZombies);
         Timeline waveTimeline = new Timeline();
 
-        // ✅ เริ่มต้นการ Spawn ทันที
+        // ✅ เริ่มต้นการ Spawn ตัวแรก
         KeyFrame initialSpawn = new KeyFrame(Duration.seconds(0), e -> {
-            int lane = (int) (Math.random() * 5); // สุ่มเลน (0-4)
-            spawnZombie(lane, waveNumber);
-            remainingZombies.decrementAndGet();
-
-            System.out.println("🔄 Spawning zombie in wave " + waveNumber + " (Remaining: " + remainingZombies.get() + " zombies)");
-        });
-
-        waveTimeline.getKeyFrames().add(initialSpawn);
-
-        // ✅ เพิ่ม KeyFrame สำหรับการ spawn ซอมบี้ต่อเนื่องทุก 7 - 10 วินาที
-        KeyFrame spawnFrame = new KeyFrame(Duration.seconds(7 + Math.random() * 3), e -> {
-            if (remainingZombies.get() > 0) {
+            if (remainingZombies.get() > 0) { // ✅ ตรวจสอบก่อนลดค่า
                 int lane = (int) (Math.random() * 5);
                 spawnZombie(lane, waveNumber);
                 remainingZombies.decrementAndGet();
+                System.out.println("🔄 Spawning zombie in wave " + waveNumber + " (Remaining: " + remainingZombies.get() + " zombies)");
+            }
+        });
+        waveTimeline.getKeyFrames().add(initialSpawn);
 
-                double nextSpawnDelay = 7 + Math.random() * 3;
-                System.out.println("⏳ Next zombie in " + nextSpawnDelay + " seconds (Remaining: " + remainingZombies.get() + " zombies)");
+        // ✅ กำหนด KeyFrame ให้ Spawn ซอมบี้ทุก 7-10 วินาที
+        KeyFrame spawnFrame = new KeyFrame(Duration.seconds(7 + Math.random() * 3), e -> {
+            if (remainingZombies.get() > 0) { // ✅ ตรวจสอบก่อนลดค่า
+                int lane = (int) (Math.random() * 5);
+                spawnZombie(lane, waveNumber);
+                remainingZombies.decrementAndGet();
+                System.out.println("⏳ Next zombie in 7-10 seconds (Remaining: " + remainingZombies.get() + " zombies)");
+            }
 
-                // ✅ เพิ่ม KeyFrame ใหม่เข้าไปใน Timeline
-                waveTimeline.getKeyFrames().add(new KeyFrame(Duration.seconds(nextSpawnDelay), e2 -> {
-                    if (remainingZombies.get() > 0) {
-                        spawnZombie((int) (Math.random() * 5), waveNumber);
-                        remainingZombies.decrementAndGet();
-                        System.out.println("🔄 Spawning zombie in wave " + waveNumber + " (Remaining: " + remainingZombies.get() + " zombies)");
-                    }
-                    if (remainingZombies.get() <= 0) {
-                        System.out.println("⚠ Wave " + waveNumber + " ended!");
-                        waveTimeline.stop();
-                        if (onComplete != null) {
-                            onComplete.run();
-                        }
-                    }
-                }));
+            // ✅ ถ้าซอมบี้หมดแล้วให้หยุด waveTimeline
+            if (remainingZombies.get() <= 0) {
+                System.out.println("⚠ Wave " + waveNumber + " ended!");
+                waveTimeline.stop();
+                if (onComplete != null) {
+                    onComplete.run();
+                }
             }
         });
 
@@ -259,6 +283,7 @@ public class GameApp extends Application {
         waveTimeline.setCycleCount(Timeline.INDEFINITE);
         waveTimeline.play();
     }
+
 
     // ตรวจสอบว่า plants อัปเดตถูกต้องหรือไม่
     public static void printPlantList() {
@@ -280,6 +305,7 @@ public class GameApp extends Application {
         zombieMoveTimeline.setCycleCount(Timeline.INDEFINITE);
         zombieMoveTimeline.play();
     }
+
     
     private void spawnZombie(int lane, int waveNumber) {
         BaseZombie zombie;
@@ -308,6 +334,7 @@ public class GameApp extends Application {
             System.out.println("⚠ Zombie already exists at lane " + lane + ", skipping.");
         }
     }
+    
 
     public static void main(String[]args) {
         launch(args);
