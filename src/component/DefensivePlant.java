@@ -25,7 +25,7 @@ public class DefensivePlant extends BasePlant {
         GameApp.gamePane.getChildren().add(this.imageView);
 
         // ตั้งค่า Timeline เพื่อตรวจจับซอมบี้และเปิด/ปิดโล่
-        Timeline detectionLoop = new Timeline(new KeyFrame(Duration.seconds(0.3), e -> detectZombie()));
+        Timeline detectionLoop = new Timeline(new KeyFrame(Duration.seconds(0.5), e -> detectZombie()));
         detectionLoop.setCycleCount(Timeline.INDEFINITE);
         detectionLoop.play();
     }
@@ -68,7 +68,7 @@ public class DefensivePlant extends BasePlant {
         
         for (int i = 0; i < frameCount; i++) {
             int frameIndex = startFrame + (i * step);
-            double frameTime = 200 * (i + 1); // ใช้ 200ms ต่อเฟรม
+            double frameTime = 75 * (i + 1); // ใช้ 200ms ต่อเฟรม
         
             // ป้องกันไม่ให้ Duration เป็น 0 หรือติดลบ
             if (frameTime < 1) frameTime = 1;
