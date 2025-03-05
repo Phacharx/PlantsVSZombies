@@ -84,7 +84,7 @@ public class MeleePlant extends BasePlant {
             attackAnimation.stop();
             attackAnimation = null;
         }
-        System.out.println("🛑 MeleePlant stopped attacking.");
+//        System.out.println("🛑 MeleePlant stopped attacking.");
     }
 
     @Override

@@ -12,7 +12,7 @@ public class Projectile {
     private int x, y;
     private ImageView projectileImage;
     private int damage = 10;
-    private Timeline moveTimeline;
+    public Timeline moveTimeline;
     private boolean isRemoved = false; // ✅ ป้องกันการ remove ซ้ำ
 
     // ✅ ใช้ static image เพื่อลดการโหลดซ้ำ
@@ -56,6 +56,7 @@ public class Projectile {
         // ✅ ตรวจสอบการชนกับซอมบี้
         for (BaseZombie zombie : GameApp.zombies) {
             if (Math.abs(zombie.getX() - x) < 30 && Math.abs(zombie.getY() - y) < 30) {
+//            	System.out.println("🧟 Zombie at X=" + zombie.getX() + ", Y=" + zombie.getY());
                 zombie.takeDamage(damage);
                 remove();
                 break;

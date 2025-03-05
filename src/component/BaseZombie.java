@@ -13,18 +13,24 @@ public abstract class BaseZombie {
     protected int health;
     protected double speed;
     protected ImageView zombieImage;
-    protected Timeline moveTimeline;
+    public Timeline moveTimeline;
     protected boolean isAttacking = false;
-    private Timeline attackTimer = null;
+    public Timeline attackTimer = null;
     private boolean isDead = false; // ✅ เพิ่มตัวแปรเช็คว่าตายหรือยัง
     
+    private static Image[] sharedWalkFrames;
     private Image[] walkFrames; // เก็บภาพเดิน 4 รูป
     private int currentFrame = 0;
-    private Timeline walkAnimation; // ใช้เปลี่ยนรูปขณะเดิน
+    public Timeline walkAnimation; // ใช้เปลี่ยนรูปขณะเดิน
+    
+    private boolean isActive = true;
+    
+    private int zombieSessionId;
 
     public BaseZombie(String[] imagePaths, int x, int y, int health, double speed) {
         this.health = health;
         this.speed = speed;
+        this.zombieSessionId = GameApp.gameSessionId;
         this.zombieImage = new ImageView();
         this.zombieImage.setFitWidth(40);
         this.zombieImage.setFitHeight(70);
@@ -59,21 +65,21 @@ public abstract class BaseZombie {
     }
 
     public void move() {
-        if (isDead) return; // ✅ ถ้าตายแล้ว ไม่ต้องเคลื่อนที่
+        if (isDead || !isActive) return; // ✅ ถ้าตายแล้วหรือไม่ Active จะไม่ขยับ
         if (!isAttacking) {
             if (!walkAnimation.getStatus().equals(Timeline.Status.RUNNING)) {
-                walkAnimation.play(); // ✅ เดิน = วนรูปภาพ
+                walkAnimation.play();
             }
-
             if (checkCollisionWithPlants()) {
                 isAttacking = true;
-                walkAnimation.stop(); // ❌ หยุดเปลี่ยนรูปขณะโจมตี
+                walkAnimation.stop();
                 attackPlant();
             } else {
                 zombieImage.setX(zombieImage.getX() - speed);
             }
         }
     }
+
 
     private boolean checkCollisionWithPlants() {
         for (BasePlant plant : GameApp.plants) {
@@ -99,7 +105,8 @@ public abstract class BaseZombie {
                     double dx = Math.abs(zombieImage.getX() - plant.getImageView().getX());
                     double dy = Math.abs(zombieImage.getY() - plant.getImageView().getY());
 
-                    if (dx < 50 && dy < 50) {
+                    // ✅ เช็คว่าเป็นซอมบี้จากเกมปัจจุบันหรือไม่
+                    if (dx < 50 && dy < 50 && this.zombieSessionId == GameApp.gameSessionId) {
                         targetPlant = plant;
                         break;
                     }
@@ -109,18 +116,21 @@ public abstract class BaseZombie {
                     // ✅ เปลี่ยนภาพไปที่เฟรม 0 ตอนโจมตี
                     zombieImage.setImage(walkFrames[0]); 
 
-                    targetPlant.takeDamage(15);
+                    targetPlant.takeDamage(15, this.zombieSessionId);
 
                     if (targetPlant.getHealth() <= 0) {
                         GameApp.gamePane.getChildren().remove(targetPlant.getImageView());
                         GameApp.plants.remove(targetPlant);
                         isAttacking = false;
-                        
-                        // ✅ กลับไปเดินหลังจากพืชที่โจมตีตาย
-                        walkAnimation.play();
-                        attackTimer.stop();
-                        attackTimer = null;
+
+                        if (attackTimer != null) {
+                            attackTimer.stop();
+                            attackTimer = null;
+                        }
+
+                        walkAnimation.play(); // ✅ กลับมาเดินต่อ
                     }
+
                 } else {
                     isAttacking = false;
                     
@@ -134,7 +144,6 @@ public abstract class BaseZombie {
             attackTimer.play();
         }
     }
-
 
     public void takeDamage(int damage) {
         if (isDead) return; // ✅ ถ้าตายแล้วไม่ต้องรับดาเมจ
@@ -156,11 +165,12 @@ public abstract class BaseZombie {
 
         GameApp.zombies.remove(this);
 
-        System.out.println("💀 Zombie defeated! +10 Energy");
+//        System.out.println("💀 Zombie defeated! +10 Energy");
         GameApp.increaseEnergy(10);
 
         // ✅ นับจำนวนซอมบี้ที่ตาย
         GameApp.totalZombiesKilled++;
+        System.out.println("Zombie : " + GameApp.totalZombiesKilled);
 
         // ✅ ตรวจสอบว่าฆ่าครบตามที่กำหนดหรือยัง
         if (GameApp.totalZombiesKilled >= GameApp.TOTAL_ZOMBIES_TO_WIN) {
@@ -174,6 +184,16 @@ public abstract class BaseZombie {
             });
         }
     }
+    
+    public void deactivate() {
+        isDead = true;
+        isAttacking = false;
+        if (moveTimeline != null) moveTimeline.stop();
+        if (attackTimer != null) attackTimer.stop();
+        if (walkAnimation != null) walkAnimation.stop();
+    }
+
+
 
 
     public ImageView getImageView() {
@@ -184,7 +204,15 @@ public abstract class BaseZombie {
         return (int) zombieImage.getX();
     }
 
-    public int getY() {
+    public Timeline getMoveTimeline() {
+		return moveTimeline;
+	}
+
+	public void setMoveTimeline(Timeline moveTimeline) {
+		this.moveTimeline = moveTimeline;
+	}
+
+	public int getY() {
         return (int) zombieImage.getY();
     }
 }

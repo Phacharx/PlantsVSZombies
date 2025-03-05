@@ -29,32 +29,36 @@ public abstract class BasePlant {
     public void performAction() {
     	
     }
+    
+    public void takeDamage(int damage, int zombieSessionId) {
+        if (zombieSessionId != GameApp.gameSessionId) {
+            System.out.println("❌ Zombie from old session! No damage taken.");
+            return; // ✅ ป้องกันซอมบี้จากเกมเก่าโจมตี
+        }
 
-    public void takeDamage(int damage) {
-        health -= damage;
-        System.out.println("Plant took damage: " + damage + " | HP left: " + health);
+        this.health -= damage;
+//        System.out.println("🌿 Plant took damage: " + damage + " | HP left: " + this.health);
 
-        if (health <= 0) {
-            System.out.println("Plant destroyed!");
+        if (this.health <= 0) {
             die();
         }
     }
 
 
     public void die() {
-        System.out.println("🔥 Plant died at X=" + this.x + ", Y=" + this.y);
+//        System.out.println("🔥 Plant died at X=" + this.x + ", Y=" + this.y);
 
         // ✅ ใช้ Platform.runLater() เพื่อลบ UI อย่างปลอดภัย
         Platform.runLater(() -> {
             boolean removedFromGamePane = GameApp.gamePane.getChildren().remove(this.imageView);
-            System.out.println("📌 Removed from gamePane: " + removedFromGamePane);
+//            System.out.println("📌 Removed from gamePane: " + removedFromGamePane);
         });
 
         // ✅ ลบจาก List
         boolean removedFromPlants = GameApp.plants.remove(this);
         System.out.println("✅ Plant removed from GameApp.plants: " + removedFromPlants);
 
-        GameApp.printPlantList(); // ตรวจสอบรายการพืชที่เหลือ
+//        GameApp.printPlantList(); // ตรวจสอบรายการพืชที่เหลือ
     }
 
 

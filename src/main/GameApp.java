@@ -52,8 +52,10 @@ public class GameApp extends Application {
     
     private int difficultyLevel;
     
+    public static int gameSessionId = (int) (Math.random() * 100000); // สุ่มค่า session ใหม่ทุกครั้งที่เริ่มเกม
+    
     public static int totalZombiesKilled = 0; // ✅ จำนวนซอมบี้ที่ถูกฆ่า
-    public final static int TOTAL_ZOMBIES_TO_WIN = 50; // ✅ จำนวนซอมบี้ที่ต้องฆ่าถึงจะชนะ
+    public final static int TOTAL_ZOMBIES_TO_WIN = 2; // ✅ จำนวนซอมบี้ที่ต้องฆ่าถึงจะชนะ
 
     
     public GameApp(int difficultyLevel) {
@@ -65,7 +67,7 @@ public class GameApp extends Application {
         gamePane = new Pane();
         gamePane.setStyle("-fx-background-color: #b6b9bf;");
         
-        Scene scene = new Scene(gamePane, 910, 600);
+        Scene scene = new Scene(gamePane, 900, 600);
         primaryStage.setScene(scene);
         primaryStage.setTitle("Plant vs Zombie");
 
@@ -216,7 +218,7 @@ public class GameApp extends Application {
                 System.out.println("⚠ Wave " + waveNumber + " ended!");
                 waveTimeline.stop();
                 if (onComplete != null) {
-                    onComplete.run();
+                    onComplete.run();              
                 }
             }
         });
@@ -251,9 +253,10 @@ public class GameApp extends Application {
                 BaseZombie zombie = iterator.next();
                 zombie.move();
 
-                if (zombie.getX() < 0) {
+                if (zombie.getX() <= 0) {
                     System.out.println("⚠ Zombie escaped! Game Over!");
                     gameOverScreen();
+                    resetGame();
                     return;
                 }
             }
@@ -322,7 +325,7 @@ public class GameApp extends Application {
         System.out.println("🎉 YOU WIN! All zombies defeated!");
 
         // ✅ แสดงหน้าจอ "You Win!!"
-        Rectangle overlay = new Rectangle(910, 600);
+        Rectangle overlay = new Rectangle(900, 600);
         overlay.setFill(Color.BLACK);
         overlay.setOpacity(0.5);
 
@@ -335,7 +338,10 @@ public class GameApp extends Application {
         javafx.scene.control.Button restartButton = new javafx.scene.control.Button("Play Again");
         restartButton.setLayoutX(400);
         restartButton.setLayoutY(300);
-        restartButton.setOnAction(e -> restartGame());
+        restartButton.setOnAction(e -> {
+        	restartGame();
+        	resetGame();
+        });
 
         Platform.runLater(() -> {
             gamePane.getChildren().addAll(overlay, winText, restartButton);
@@ -343,7 +349,7 @@ public class GameApp extends Application {
     }
 
     
-    private void gameOverScreen() {
+    private static void gameOverScreen() {
         if (isGameOver) return;
         isGameOver = true;
 
@@ -359,67 +365,134 @@ public class GameApp extends Application {
             }
         }
 
-        // ✅ ลบพืชทั้งหมด
+        // ✅ ลบพืชและซอมบี้ทั้งหมด
         plants.clear();
         zombies.clear();
         projectiles.clear();
+        
         Platform.runLater(() -> {
-            gamePane.getChildren().clear();
+            gamePane.getChildren().clear(); // ล้างหน้าจอ
         });
 
         System.out.println("⚠ Game Over! Stopping all zombie movement and shooting.");
 
-        // แสดงหน้าจอ Game Over
-        Rectangle overlay = new Rectangle(910, 600);
-        overlay.setFill(Color.BLACK);
-        overlay.setOpacity(0.5);
+        // ✅ ใช้ Timeline เพื่อหน่วงเวลาก่อนแสดง Game Over UI
+        new Timeline(new KeyFrame(Duration.millis(50), e -> {
+            Platform.runLater(() -> {
+                Rectangle overlay = new Rectangle(900, 600);
+                overlay.setFill(Color.BLACK);
+                overlay.setOpacity(0.5);
 
-        Text gameOverText = new Text("Game Over");
-        gameOverText.setFont(new Font(50));
-        gameOverText.setFill(Color.RED);
-        gameOverText.setLayoutX(320);
-        gameOverText.setLayoutY(250);
+                Text gameOverText = new Text("Game Over");
+                gameOverText.setFont(new Font(50));
+                gameOverText.setFill(Color.RED);
+                gameOverText.setLayoutX(320);
+                gameOverText.setLayoutY(250);
 
-        javafx.scene.control.Button restartButton = new javafx.scene.control.Button("Restart");
-        restartButton.setLayoutX(400);
-        restartButton.setLayoutY(300);
-        restartButton.setOnAction(e -> restartGame());
+                javafx.scene.control.Button restartButton = new javafx.scene.control.Button("Restart");
+                restartButton.setLayoutX(400);
+                restartButton.setLayoutY(300);
+                restartButton.setOnAction(event -> restartGame());
 
-        Platform.runLater(() -> {
-            gamePane.getChildren().addAll(overlay, gameOverText, restartButton);
-        });
+                gamePane.getChildren().addAll(overlay, gameOverText, restartButton);
+            });
+
+            System.out.println("🔥 Showing Game Over UI");
+        })).play();
     }
 
-    private void restartGame() {
-        System.out.println("🔄 Restarting Game...");
+    
+    public static void resetGame() {
+        Platform.runLater(() -> {
+            // ❌ หยุดทุก Timeline ของซอมบี้
+            for (BaseZombie zombie : GameApp.zombies) {
+                if (zombie.moveTimeline != null) zombie.moveTimeline.stop();
+                if (zombie.walkAnimation != null) zombie.walkAnimation.stop();
+                if (zombie.attackTimer != null) zombie.attackTimer.stop();
+                zombie.deactivate();
+            }
 
+            // ❌ หยุดทุก Timeline ของพืช (เช่น Shooter)
+            for (BasePlant plant : GameApp.plants) {
+                if (plant instanceof Shooter) {
+                    ((Shooter) plant).stopShooting(); // ต้องมีฟังก์ชันหยุด
+                }
+            }
+
+            // ❌ หยุดทุก Timeline ของกระสุน (Projectile)
+            for (Projectile projectile : GameApp.projectiles) {
+                if (projectile.moveTimeline != null) projectile.moveTimeline.stop();
+            }
+
+            // 🗑 ลบทุก Object ในเกม
+            GameApp.gamePane.getChildren().clear(); // ลบทุกอย่างจากหน้าจอ
+            GameApp.plants.clear();  // ลบพืชทั้งหมด
+            GameApp.zombies.clear(); // ลบซอมบี้ทั้งหมด
+            GameApp.projectiles.clear(); // ลบกระสุนทั้งหมด
+            
+            Platform.runLater(() -> {
+                gamePane.getChildren().clear();
+//                System.out.println("🔍 Remaining Zombies: " + zombies.size()); // Debug
+//                System.out.println("🔍 Remaining Plants: " + plants.size());
+            });
+            
+            gameOverScreen();
+
+            // 🛑 แสดง Debug Log
+            System.out.println("🛑 เกมถูกรีเซ็ต! ทุก Timeline หยุดทำงาน และลบ Object ทั้งหมด");
+        });
+    }
+    
+    private static void restartGame() {
+        System.out.println("🔄 Returning to Start Screen...");
+
+        // ✅ รีเซ็ตค่าเกม
         isGameOver = false;
         isGameStarted = false;
         isWaveRunning = false;
         isZombieMoving = false;
-        
+        totalZombiesKilled = 0;
         energy = 100;
-        
-        // ✅ ล้างพืชและหยุดการยิงทั้งหมด
+
+        // ✅ รีเซ็ต session ID ใหม่
+        GameApp.gameSessionId = (int) (Math.random() * 100000);
+        System.out.println("🆕 New Game Session ID: " + GameApp.gameSessionId);
+
+        // ✅ ลบพืชทั้งหมด
         for (BasePlant plant : new ArrayList<>(plants)) {
             if (plant instanceof Shooter) {
                 ((Shooter) plant).stopShooting();
             }
-            gamePane.getChildren().remove(plant.getImageView());
+            Platform.runLater(() -> gamePane.getChildren().remove(plant.getImageView()));
         }
         plants.clear();
 
-        // ✅ ล้างซอมบี้ทั้งหมดออกจากเกม
+        // ✅ หยุดและลบซอมบี้ทั้งหมด
         for (BaseZombie zombie : new ArrayList<>(zombies)) {
-            gamePane.getChildren().remove(zombie.getImageView());
+            zombie.deactivate();
+            Platform.runLater(() -> gamePane.getChildren().remove(zombie.getImageView()));
         }
         zombies.clear();
 
-        // ✅ รีเซ็ต UI ใหม่
-        gamePane.getChildren().clear();
-        setupGameUI();
-        
-        System.out.println("🔁 Game restarted. Waiting for player to press Start...");
+        // ✅ ลบกระสุนทั้งหมด
+        for (Projectile projectile : new ArrayList<>(projectiles)) {
+            Platform.runLater(() -> gamePane.getChildren().remove(projectile.getImageView()));
+        }
+        projectiles.clear();
+
+        // ✅ ล้าง UI ออกจาก gamePane
+        Platform.runLater(() -> gamePane.getChildren().clear());
+
+        // ✅ เปลี่ยนเป็นหน้า StartScreen
+        Platform.runLater(() -> {
+            try {
+                StartScreen startScreen = new StartScreen();
+                Stage stage = (Stage) gamePane.getScene().getWindow();
+                startScreen.start(stage);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 
 

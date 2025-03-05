@@ -8,7 +8,7 @@ import javafx.util.Duration;
 import main.GameApp;
 
 public class Shooter extends BasePlant {
-    private Timeline shootTimer;
+    public Timeline shootTimer;
 
     public Shooter(int x, int y) {
         super(x, y, 100, "/Image/Big_Mina.png");
@@ -52,7 +52,7 @@ public class Shooter extends BasePlant {
         if (shootTimer != null) {
             shootTimer.stop();
             shootTimer = null;
-            System.out.println("🛑 Shooter stopped shooting.");
+//            System.out.println("🛑 Shooter stopped shooting.");
         }
     }
 
