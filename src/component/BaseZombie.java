@@ -2,12 +2,14 @@ package component;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
-import javafx.scene.image.ImageView;
-import javafx.stage.Stage;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.util.Duration;
 import javafx.application.Platform;
+import javafx.stage.Stage;
 import main.GameApp;
+import java.util.HashMap;
+import java.util.Map;
 
 public abstract class BaseZombie {
     protected int health;
@@ -16,34 +18,64 @@ public abstract class BaseZombie {
     public Timeline moveTimeline;
     protected boolean isAttacking = false;
     public Timeline attackTimer = null;
-    private boolean isDead = false; // ✅ เพิ่มตัวแปรเช็คว่าตายหรือยัง
-    
-    private static Image[] sharedWalkFrames;
-    private Image[] walkFrames; // เก็บภาพเดิน 4 รูป
+    private boolean isDead = false;
+
+    private static final Map<String, Image[]> zombieImagesMap = new HashMap<>(); // ✅ Shared Images สำหรับแต่ละประเภท
+    private Image[] walkFrames;
     private int currentFrame = 0;
-    public Timeline walkAnimation; // ใช้เปลี่ยนรูปขณะเดิน
+    public Timeline walkAnimation;
     
     private boolean isActive = true;
-    
     private int zombieSessionId;
 
-    public BaseZombie(String[] imagePaths, int x, int y, int health, double speed) {
+    static {
+        try {
+            // ✅ โหลดภาพของซอมบี้แบบปกติ (Zombie)
+            zombieImagesMap.put("Zombie", new Image[]{
+                new Image(BaseZombie.class.getResource("/Image/Big_Kai_Ju_9_WalkS.png").toExternalForm()),
+                new Image(BaseZombie.class.getResource("/Image/Big_Kai_Ju_9_WalkR.png").toExternalForm()),
+                new Image(BaseZombie.class.getResource("/Image/Big_Kai_Ju_9_WalkS.png").toExternalForm()),
+                new Image(BaseZombie.class.getResource("/Image/Big_Kai_Ju_9_WalkL.png").toExternalForm())
+            });
+
+            // ✅ โหลดภาพของซอมบี้เร็ว (FastZombie)
+            zombieImagesMap.put("FastZombie", new Image[]{
+                new Image(BaseZombie.class.getResource("/Image/FastZombieS.png").toExternalForm()),
+                new Image(BaseZombie.class.getResource("/Image/FastZombieR.png").toExternalForm()),
+                new Image(BaseZombie.class.getResource("/Image/FastZombieS.png").toExternalForm()),
+                new Image(BaseZombie.class.getResource("/Image/FastZombieL.png").toExternalForm())
+            });
+
+            // ✅ โหลดภาพของซอมบี้หนัก (HeavyZombie)
+            zombieImagesMap.put("HeavyZombie", new Image[]{
+            	new Image(BaseZombie.class.getResource("/Image/Big_Kai_Ju_9_WalkS.png").toExternalForm()),
+                new Image(BaseZombie.class.getResource("/Image/Big_Kai_Ju_9_WalkR.png").toExternalForm()),
+                new Image(BaseZombie.class.getResource("/Image/Big_Kai_Ju_9_WalkS.png").toExternalForm()),
+                new Image(BaseZombie.class.getResource("/Image/Big_Kai_Ju_9_WalkL.png").toExternalForm())
+            });
+
+        } catch (Exception e) {
+            System.err.println("⚠ Failed to load Zombie images: " + e.getMessage());
+        }
+    }
+    public BaseZombie(String zombieType, int x, int y, int health, double speed, double width, double height) {
         this.health = health;
         this.speed = speed;
         this.zombieSessionId = GameApp.gameSessionId;
         this.zombieImage = new ImageView();
-        this.zombieImage.setFitWidth(40);
-        this.zombieImage.setFitHeight(70);
+        this.zombieImage.setFitWidth(width);  // ✅ กำหนดขนาดเฉพาะตัว
+        this.zombieImage.setFitHeight(height);
         this.zombieImage.setX(x);
         this.zombieImage.setY(y);
-
-        // ✅ โหลดภาพเดิน 4 รูป
-        walkFrames = new Image[4];
-        for (int i = 0; i < 4; i++) {
-            walkFrames[i] = new Image(getClass().getResource(imagePaths[i]).toExternalForm());
+        
+        if (zombieImagesMap.containsKey(zombieType)) {
+            this.walkFrames = zombieImagesMap.get(zombieType);
+        } else {
+            System.err.println("⚠ Invalid zombie type: " + zombieType);
+            this.walkFrames = zombieImagesMap.get("Zombie"); // ใช้ Default เป็น Zombie
         }
-        this.zombieImage.setImage(walkFrames[0]); // เริ่มที่รูปแรก
 
+        this.zombieImage.setImage(walkFrames[0]);
         GameApp.gamePane.getChildren().add(zombieImage);
 
         // ✅ ตั้งค่า Timeline เปลี่ยนรูปขณะเดิน
@@ -169,20 +201,11 @@ public abstract class BaseZombie {
         GameApp.increaseEnergy(10);
 
         // ✅ นับจำนวนซอมบี้ที่ตาย
-        GameApp.totalZombiesKilled++;
-        System.out.println("Zombie : " + GameApp.totalZombiesKilled);
+        GameApp.increaseScore();
+//        System.out.println("Zombie : " + GameApp.totalZombiesKilled);
 
         // ✅ ตรวจสอบว่าฆ่าครบตามที่กำหนดหรือยัง
-        if (GameApp.totalZombiesKilled >= GameApp.TOTAL_ZOMBIES_TO_WIN) {
-            // ✅ หา instance ของ GameApp ที่กำลังรันอยู่ แล้วเรียก youWinScreen()
-            Platform.runLater(() -> {
-                Stage stage = (Stage) GameApp.gamePane.getScene().getWindow();
-                GameApp gameAppInstance = (GameApp) stage.getUserData(); 
-                if (gameAppInstance != null) {
-                    gameAppInstance.youWinScreen(); 
-                }
-            });
-        }
+        
     }
     
     public void deactivate() {
@@ -192,10 +215,7 @@ public abstract class BaseZombie {
         if (attackTimer != null) attackTimer.stop();
         if (walkAnimation != null) walkAnimation.stop();
     }
-
-
-
-
+    
     public ImageView getImageView() {
         return zombieImage;
     }

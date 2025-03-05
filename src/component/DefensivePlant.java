@@ -8,18 +8,27 @@ import javafx.util.Duration;
 import main.GameApp;
 
 public class DefensivePlant extends BasePlant {
-    private Image[] shieldFrames;
+    private static Image[] sharedShieldFrames;
     private Timeline shieldAnimation;
     private boolean isShielded = false;
 
+    static {
+        try {
+            // ✅ โหลดภาพโล่ทั้งหมด 6 เฟรมเพียงครั้งเดียว
+            sharedShieldFrames = new Image[6];
+            for (int i = 0; i < 6; i++) {
+                String imagePath = "/Image/Big_Defensive_Plant_" + (i + 1) + ".png";
+                sharedShieldFrames[i] = new Image(DefensivePlant.class.getResource(imagePath).toExternalForm());
+            }
+        } catch (Exception e) {
+            System.err.println("⚠ Failed to load DefensivePlant images: " + e.getMessage());
+        }
+    }
+    
     public DefensivePlant(int x, int y) {
         super(x, y, 400, "/Image/Big_Defensive_Plant_1.png");
-
-        // โหลดภาพโล่ทั้งหมด 6 เฟรม
-        shieldFrames = new Image[6];
-        for (int i = 0; i < 6; i++) {
-            shieldFrames[i] = new Image(getClass().getResource("/Image/Big_Defensive_Plant_" + (i + 1) + ".png").toExternalForm());
-        }
+        
+        this.imageView.setImage(sharedShieldFrames[0]);
 
         GameApp.gamePane.getChildren().add(this.imageView);
 
@@ -73,7 +82,7 @@ public class DefensivePlant extends BasePlant {
             if (frameTime < 1) frameTime = 1;
 
             shieldAnimation.getKeyFrames().add(new KeyFrame(Duration.millis(frameTime), e -> {
-                this.imageView.setImage(shieldFrames[frameIndex]);
+                this.imageView.setImage(sharedShieldFrames[frameIndex]);
             }));
         }
 

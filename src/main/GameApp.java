@@ -40,6 +40,8 @@ public class GameApp extends Application {
     private static Text energyText;
     private static Timeline energyTimeline;
     
+    private static Text scoreText;
+    
     private static Timeline waveTimer;
     private int currentWave = 0;
     
@@ -50,12 +52,12 @@ public class GameApp extends Application {
     private static boolean isWaveRunning = false;
     private static boolean isZombieMoving = false;
     
-    private int difficultyLevel;
+    private static int difficultyLevel;
     
     public static int gameSessionId = (int) (Math.random() * 100000); // สุ่มค่า session ใหม่ทุกครั้งที่เริ่มเกม
     
     public static int totalZombiesKilled = 0; // ✅ จำนวนซอมบี้ที่ถูกฆ่า
-    public final static int TOTAL_ZOMBIES_TO_WIN = 2; // ✅ จำนวนซอมบี้ที่ต้องฆ่าถึงจะชนะ
+    public final static int TOTAL_ZOMBIES_TO_WIN = 46; // ✅ จำนวนซอมบี้ที่ต้องฆ่าถึงจะชนะ
 
     
     public GameApp(int difficultyLevel) {
@@ -83,6 +85,23 @@ public class GameApp extends Application {
             energy += amount;
             energyText.setText("Energy: " + energy);
         });
+    }
+
+    public static void increaseScore() {
+    	totalZombiesKilled++;
+        Platform.runLater(() -> {
+        	scoreText.setText("Score: " + totalZombiesKilled);
+        }); 
+        if (totalZombiesKilled - (difficultyLevel * 4) >= TOTAL_ZOMBIES_TO_WIN) {
+            // ✅ หา instance ของ GameApp ที่กำลังรันอยู่ แล้วเรียก youWinScreen()
+            Platform.runLater(() -> {
+                Stage stage = (Stage) GameApp.gamePane.getScene().getWindow();
+                GameApp gameAppInstance = (GameApp) stage.getUserData(); 
+                if (gameAppInstance != null) {
+                    gameAppInstance.youWinScreen(); 
+                }
+            });
+        }
     }
 
     private void placePlant(int row, int col) {
@@ -146,10 +165,15 @@ public class GameApp extends Application {
                 return;
         }
 
+        // ✅ ตรวจสอบว่าพืชอยู่ใน `gamePane` แล้วหรือยัง ก่อน `add()`
+        if (!gamePane.getChildren().contains(newPlant.getImageView())) {
+            gamePane.getChildren().add(newPlant.getImageView());
+        } else {
+            System.out.println("⚠ Plant already exists in gamePane! Avoiding duplicate.");
+        }
+
         GameApp.plants.add(newPlant);
     }
-
-
 
     private void startWaves() {
         if (isWaveRunning) return; // ⛔ ป้องกันการรันซ้ำซ้อน
@@ -157,7 +181,7 @@ public class GameApp extends Application {
         isWaveRunning = true; // ✅ ตั้งค่าว่ากำลังมี Wave
         System.out.println("🚀 startWaves() called");
 
-        int[] zombiesPerWave = {7, 11, 15, 17}; 
+        int[] zombiesPerWave = {6 + difficultyLevel, 10 + difficultyLevel, 14 + difficultyLevel, 16 + difficultyLevel}; 
         currentWave = 1;
         spawnWave(currentWave, zombiesPerWave[currentWave - 1], () -> {
             startNextWave(zombiesPerWave);
@@ -315,13 +339,13 @@ public class GameApp extends Application {
         }
 
         // ✅ ลบพืชและซอมบี้ทั้งหมด
-        plants.clear();
-        zombies.clear();
-        projectiles.clear();
         Platform.runLater(() -> {
             gamePane.getChildren().clear();
         });
-
+        plants.clear();
+        zombies.clear();
+        projectiles.clear();
+        
         System.out.println("🎉 YOU WIN! All zombies defeated!");
 
         // ✅ แสดงหน้าจอ "You Win!!"
@@ -522,11 +546,19 @@ public class GameApp extends Application {
         energyText.setLayoutX(550);
         energyText.setLayoutY(50);
         gamePane.getChildren().add(energyText);
+        
+        // ✅ เพิ่มข้อความแสดงคะแนน
+        scoreText = new Text("Score: " + totalZombiesKilled);
+        scoreText.setFont(new Font(20));
+        scoreText.setFill(Color.WHITE);
+        scoreText.setLayoutX(700);
+        scoreText.setLayoutY(50);
+        gamePane.getChildren().add(scoreText);
 
         // ✅ 🔥 ตรวจสอบให้แน่ใจว่า energyTimeline ถูกสร้างก่อนเริ่มเกม
         if (energyTimeline == null) {
             energyTimeline = new Timeline(new KeyFrame(Duration.seconds(3), e -> {
-                energy += 5;
+                energy += 5 + difficultyLevel;
                 energyText.setText("Energy: " + energy);
             }));
             energyTimeline.setCycleCount(Timeline.INDEFINITE);

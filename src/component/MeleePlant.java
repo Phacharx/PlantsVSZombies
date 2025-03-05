@@ -10,20 +10,31 @@ import main.GameApp;
 public class MeleePlant extends BasePlant {
     private Timeline attackTimer;
     private Timeline attackAnimation;
-    private Image idleFrame;
-    private Image[] attackFrames;
     private int currentFrame = 0;
     private boolean isAttacking = false;
+
+    // ✅ ใช้ static เพื่อแชร์รูปภาพระหว่างทุก instance
+    private static Image sharedIdleFrame;
+    private static Image[] sharedAttackFrames;
+
+    static {
+        // ✅ โหลดภาพครั้งเดียวเท่านั้น
+        try {
+            sharedIdleFrame = new Image(MeleePlant.class.getResource("/Image/Big_Finish_PunchS1.png").toExternalForm());
+            sharedAttackFrames = new Image[4];
+            for (int i = 0; i < 4; i++) {
+                sharedAttackFrames[i] = new Image(MeleePlant.class.getResource("/Image/Big_Finish_PunchA" + (i + 1) + ".png").toExternalForm());
+            }
+        } catch (Exception e) {
+            System.err.println("⚠ Failed to load MeleePlant images: " + e.getMessage());
+        }
+    }
 
     public MeleePlant(int x, int y) {
         super(x, y, 100, "/Image/Big_Finish_PunchS1.png");
 
-        // โหลดภาพ idle และภาพโจมตี (4 เฟรม)
-        idleFrame = new Image(getClass().getResource("/Image/Big_Finish_PunchS1.png").toExternalForm());
-        attackFrames = new Image[4];
-        for (int i = 0; i < 4; i++) {
-            attackFrames[i] = new Image(getClass().getResource("/Image/Big_Finish_PunchA" + (i + 1) + ".png").toExternalForm());
-        }
+        // ✅ ใช้ภาพที่โหลดไว้แทนการโหลดใหม่
+        this.imageView.setImage(sharedIdleFrame);
 
         GameApp.gamePane.getChildren().add(this.imageView);
         startAttacking();
@@ -45,7 +56,7 @@ public class MeleePlant extends BasePlant {
             // ไม่มีซอมบี้ → กลับเป็นภาพ idle
             if (isAttacking) {
                 isAttacking = false;
-                this.imageView.setImage(idleFrame);
+                this.imageView.setImage(sharedIdleFrame);
             }
         }));
         attackTimer.setCycleCount(Timeline.INDEFINITE);
@@ -62,16 +73,16 @@ public class MeleePlant extends BasePlant {
         }
 
         attackAnimation = new Timeline(new KeyFrame(Duration.millis(100), e -> {
-            if (currentFrame < attackFrames.length) {
-                this.imageView.setImage(attackFrames[currentFrame]);
+            if (currentFrame < sharedAttackFrames.length) {
+                this.imageView.setImage(sharedAttackFrames[currentFrame]);
                 currentFrame++;
             } else {
-                this.imageView.setImage(idleFrame);
+                this.imageView.setImage(sharedIdleFrame);
                 isAttacking = false;
                 attackAnimation.stop();
             }
         }));
-        attackAnimation.setCycleCount(attackFrames.length + 1);
+        attackAnimation.setCycleCount(sharedAttackFrames.length + 1);
         attackAnimation.play();
     }
 

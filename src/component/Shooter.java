@@ -12,8 +12,11 @@ public class Shooter extends BasePlant {
 
     public Shooter(int x, int y) {
         super(x, y, 100, "/Image/Big_Mina.png");
-        
-        GameApp.gamePane.getChildren().add(this.imageView);
+        if (!GameApp.gamePane.getChildren().contains(this.imageView)) { // ✅ ป้องกันเพิ่มซ้ำ
+            GameApp.gamePane.getChildren().add(this.imageView);
+        } else {
+            System.out.println("⚠ Shooter already exists in gamePane! Avoiding duplicate.");
+        }
         startShooting();
     }
 

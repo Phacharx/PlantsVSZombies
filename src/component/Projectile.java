@@ -15,10 +15,20 @@ public class Projectile {
     public Timeline moveTimeline;
     private boolean isRemoved = false; // ✅ ป้องกันการ remove ซ้ำ
 
-    // ✅ ใช้ static image เพื่อลดการโหลดซ้ำ
-    private static final Image PROJECTILE_IMAGE = new Image(
-        Projectile.class.getResource("/Image/Big_Energy_Ball.png").toExternalForm()
-    );
+    // ✅ Shared image เพื่อลดการโหลดซ้ำ
+    private static final Image PROJECTILE_IMAGE;
+
+    static {
+        // ✅ โหลดภาพกระสุนเพียงครั้งเดียว
+        Image tempImage;
+        try {
+            tempImage = new Image(Projectile.class.getResource("/Image/Big_Energy_Ball.png").toExternalForm());
+        } catch (Exception e) {
+            System.err.println("⚠ Failed to load projectile image: " + e.getMessage());
+            tempImage = null;
+        }
+        PROJECTILE_IMAGE = tempImage;
+    }
 
     public Projectile(int x, int y) {
         this.x = x;
@@ -56,7 +66,6 @@ public class Projectile {
         // ✅ ตรวจสอบการชนกับซอมบี้
         for (BaseZombie zombie : GameApp.zombies) {
             if (Math.abs(zombie.getX() - x) < 30 && Math.abs(zombie.getY() - y) < 30) {
-//            	System.out.println("🧟 Zombie at X=" + zombie.getX() + ", Y=" + zombie.getY());
                 zombie.takeDamage(damage);
                 remove();
                 break;
