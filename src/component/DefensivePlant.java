@@ -9,12 +9,11 @@ import main.GameApp;
 
 public class DefensivePlant extends BasePlant {
     private Image[] shieldFrames;
-    private int currentFrame = 0;
     private Timeline shieldAnimation;
     private boolean isShielded = false;
 
     public DefensivePlant(int x, int y) {
-        super(x, y, 150, "/Image/Big_Defensive_Plant_1.png");
+        super(x, y, 400, "/Image/Big_Defensive_Plant_1.png");
 
         // โหลดภาพโล่ทั้งหมด 6 เฟรม
         shieldFrames = new Image[6];
@@ -68,7 +67,7 @@ public class DefensivePlant extends BasePlant {
         
         for (int i = 0; i < frameCount; i++) {
             int frameIndex = startFrame + (i * step);
-            double frameTime = 75 * (i + 1); // ใช้ 200ms ต่อเฟรม
+            double frameTime = 75 * (i + 1); // ใช้ 75ms ต่อเฟรม
         
             // ป้องกันไม่ให้ Duration เป็น 0 หรือติดลบ
             if (frameTime < 1) frameTime = 1;

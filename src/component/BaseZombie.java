@@ -3,6 +3,7 @@ package component;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.scene.image.ImageView;
+import javafx.stage.Stage;
 import javafx.scene.image.Image;
 import javafx.util.Duration;
 import javafx.application.Platform;
@@ -146,8 +147,8 @@ public abstract class BaseZombie {
     }
 
     public void die() {
-        if (isDead) return; // ✅ กันไม่ให้ die() ถูกเรียกซ้ำ
-        isDead = true; // ✅ ตั้งค่าซอมบี้ว่าตายแล้ว
+        if (isDead) return;
+        isDead = true;
 
         Platform.runLater(() -> {
             GameApp.gamePane.getChildren().remove(zombieImage);
@@ -155,22 +156,25 @@ public abstract class BaseZombie {
 
         GameApp.zombies.remove(this);
 
-        if (walkAnimation != null) {
-            walkAnimation.stop();
-        }
-        if (moveTimeline != null) {
-            moveTimeline.stop();
-        }
-        if (attackTimer != null) {
-            attackTimer.stop();
-            attackTimer = null;
-        }
-
         System.out.println("💀 Zombie defeated! +10 Energy");
-
-        // ✅ เพิ่มพลังงาน 10 หน่วย
         GameApp.increaseEnergy(10);
+
+        // ✅ นับจำนวนซอมบี้ที่ตาย
+        GameApp.totalZombiesKilled++;
+
+        // ✅ ตรวจสอบว่าฆ่าครบตามที่กำหนดหรือยัง
+        if (GameApp.totalZombiesKilled >= GameApp.TOTAL_ZOMBIES_TO_WIN) {
+            // ✅ หา instance ของ GameApp ที่กำลังรันอยู่ แล้วเรียก youWinScreen()
+            Platform.runLater(() -> {
+                Stage stage = (Stage) GameApp.gamePane.getScene().getWindow();
+                GameApp gameAppInstance = (GameApp) stage.getUserData(); 
+                if (gameAppInstance != null) {
+                    gameAppInstance.youWinScreen(); 
+                }
+            });
+        }
     }
+
 
     public ImageView getImageView() {
         return zombieImage;

@@ -18,7 +18,7 @@ public class Shooter extends BasePlant {
     }
 
     private void startShooting() {
-        shootTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+        shootTimer = new Timeline(new KeyFrame(Duration.seconds(1.5), e -> {
             if (isDead()) { // หยุดยิงถ้าพืชตาย
                 stopShooting();
                 return;
